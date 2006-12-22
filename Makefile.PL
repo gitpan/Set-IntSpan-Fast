@@ -1,0 +1,20 @@
+use strict;
+use warnings;
+use ExtUtils::MakeMaker;
+
+WriteMakefile(
+    NAME                => 'Set::IntSpan::Fast',
+    AUTHOR              => 'Andy Armstrong <andy@hexten.net>',
+    VERSION_FROM        => 'lib/Set/IntSpan/Fast.pm',
+    ABSTRACT_FROM       => 'lib/Set/IntSpan/Fast.pm',
+    PL_FILES            => {},
+    PREREQ_PM => {
+        'Test::More'    => 0,
+        'version'       => 0,
+        'Class::Std'    => 0,
+        'Data::Types'   => 0,
+        'List::Util'    => 0,
+    },
+    dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
+    clean               => { FILES => 'Set-IntSpan-Fast-*' },
+);
