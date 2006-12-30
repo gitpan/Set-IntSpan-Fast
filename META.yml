@@ -1,15 +1,18 @@
-# http://module-build.sourceforge.net/META-spec.html
-#XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
-name:         Set-IntSpan-Fast
-version:      v0.0.2
-version_from: lib/Set/IntSpan/Fast.pm
-installdirs:  site
-requires:
+--- #YAML:1.0
+name:                Set-IntSpan-Fast
+version:             v0.0.3
+abstract:            Fast handling of sets containing integer spans.
+license:             ~
+generated_by:        ExtUtils::MakeMaker version 6.31
+distribution_type:   module
+requires:     
     Class::Std:                    0
     Data::Types:                   0
     List::Util:                    0
     Test::More:                    0
     version:                       0
-
-distribution_type: module
-generated_by: ExtUtils::MakeMaker version 6.17
+meta-spec:
+    url:     http://module-build.sourceforge.net/META-spec-v1.2.html
+    version: 1.2
+author:
+    - Andy Armstrong <andy@hexten.net>

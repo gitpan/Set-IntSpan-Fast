@@ -7,7 +7,7 @@ use Class::Std;
 use Data::Types qw(is_int);
 use List::Util qw(min max);
 
-use version; our $VERSION = qv('0.0.2');
+use version; our $VERSION = qv('0.0.3');
 
 use constant {
     POSITIVE_INFINITY   =>  2 ** 31 - 2,
@@ -113,28 +113,20 @@ sub _find_pos {
     my $edges = shift;
     my $val   = shift;
     my $low   = shift || 0;
+    my $high  = scalar(@$edges);
 
-    my $count = scalar(@$edges);
-    my $high  = $count-1;
-
-    # TODO: Optimise the case where the value is at one end or other of
-    # the range
-    my $mid = $low;
-    while ($low <= $high) {
-        $mid = int(($low + $high) / 2);
+    while ($low < $high) {
+        my $mid = int(($low + $high) / 2);
         if ($val < $edges->[$mid]) {
-            $high = $mid - 1;
+            $high = $mid;
         } elsif ($val > $edges->[$mid]) {
             $low  = $mid + 1;
         } else {
             return $mid;
         }
     }
-
-    # Sometimes we need to correct because $mid is always rounded down.
-    $mid++ if $mid < $count && $edges->[$mid] < $val;
     
-    return $mid;
+    return $low;
 }
 
 sub add_range {
@@ -338,7 +330,7 @@ Set::IntSpan::Fast - Fast handling of sets containing integer spans.
 
 =head1 VERSION
 
-This document describes Set::IntSpan::Fast version 0.0.2
+This document describes Set::IntSpan::Fast version 0.0.3
 
 =head1 SYNOPSIS
 
@@ -404,7 +396,7 @@ Return an identical copy of the set.
 
 Add the specified integers to the set. Any number of arguments may be
 specified in any order. All arguments must be integers between
-Set::IntSpan::NEGATIVE_INFINITY and Set::IntSpan::POSITIVE_INFINITY
+C<Set::IntSpan::NEGATIVE_INFINITY> and C<Set::IntSpan::POSITIVE_INFINITY>
 inclusive.
 
 =item C<remove( $number ... )>
@@ -437,9 +429,9 @@ pair must be greater than or equal to the first.
 Complement the set. Because our notion of infinity is actually
 disappointingly finite inverting a finite set results in another finite
 set. For example inverting the empty set makes it contain all the
-integers between NEGATIVE_INFINITY and POSITIVE_INFINITY inclusive.
+integers between C<NEGATIVE_INFINITY> and C<POSITIVE_INFINITY> inclusive.
 
-As noted above NEGATIVE_INFINITY and POSITIVE_INFINITY are actually just
+As noted above C<NEGATIVE_INFINITY> and C<POSITIVE_INFINITY> are actually just
 big integers.
 
 =item C<merge( $set ... )>
@@ -563,13 +555,27 @@ Return a string representation of the set.
 
 =item C<iterate_runs()>
 
+Returns an iterator that returns each run of integers in the set in
+ascending order. To iterate all the members of the set do something
+like this:
+
+    my $iter = $set->iterate_runs();
+    while (my ($from, $to) = $iter->()) {
+        for my $member ($from .. $to) {
+            print "$member\n";
+        }
+    }
+
 =back
 
 =head2 Constants
 
-The constants NEGATIVE_INFINITY and POSITIVE_INFINITY are exposed. As
+The constants C<NEGATIVE_INFINITY> and C<POSITIVE_INFINITY> are exposed. As
 noted above these are infinitely smaller than infinity but they're the
-best we've got.
+best we've got. They're not exported into the caller's namespace so if you
+want to use them you'll have to use their fully qualified names:
+
+    $set->add_range(1, Set::IntSpan::Fast::POSITIVE_INFINITY);
 
 =over
 
@@ -597,8 +603,8 @@ be in any particular order.
 
 =item C<< Value out of range >>
 
-Sets may only contain values in the range NEGATIVE_INFINITY to
-POSITIVE_INFINITY inclusive.
+Sets may only contain values in the range C<NEGATIVE_INFINITY> to
+C<POSITIVE_INFINITY> inclusive.
 
 =item C<< That's very kind of you - but I expect you meant complement() >>
 
@@ -606,7 +612,7 @@ The method that complements a set is called C<complement>.
 
 =item C<< I need two sets to compare >>
 
-C<superset> and C<subset> need two sets to compare. The may be called
+C<superset> and C<subset> need two sets to compare. They may be called
 either as a function:
 
     $ss = Set::IntSpan::Fast::subset( $s1, $s2 )

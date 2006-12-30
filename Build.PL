@@ -4,6 +4,7 @@ use Module::Build;
 
 my $builder = Module::Build->new(
     module_name         => 'Set::IntSpan::Fast',
+    sign                => 1,
     license             => 'perl',
     dist_author         => 'Andy Armstrong <andy@hexten.net>',
     dist_version_from   => 'lib/Set/IntSpan/Fast.pm',
