@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                Set-IntSpan-Fast
-version:             v0.0.3
+version:             v0.0.4
 abstract:            Fast handling of sets containing integer spans.
 license:             ~
 generated_by:        ExtUtils::MakeMaker version 6.31
