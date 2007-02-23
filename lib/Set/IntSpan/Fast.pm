@@ -7,7 +7,7 @@ use Class::Std;
 use Data::Types qw(is_int);
 use List::Util qw(min max);
 
-use version; our $VERSION = qv('0.0.5');
+use version; our $VERSION = qv('0.0.6');
 
 use constant {
     POSITIVE_INFINITY   =>  2 ** 31 - 2,
@@ -330,7 +330,7 @@ Set::IntSpan::Fast - Fast handling of sets containing integer spans.
 
 =head1 VERSION
 
-This document describes Set::IntSpan::Fast version 0.0.5
+This document describes Set::IntSpan::Fast version 0.0.6
 
 =head1 SYNOPSIS
 

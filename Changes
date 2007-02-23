@@ -14,3 +14,7 @@ Revision history for Set-IntSpan-Fast
 
 0.0.5   2007-01-16
         And now actually including the tests. Doh.
+
+0.0.6   2007-02-23
+        Added machine readable licence.
+        
