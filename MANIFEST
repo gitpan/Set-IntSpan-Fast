@@ -6,6 +6,8 @@ README
 t/00.load.t
 t/01.basic.t
 t/02.misc.t
+t/03.string.t
+t/04.miscstring.t
 t/pod-coverage.t
 t/pod.t
 META.yml                                 Module meta-data (added by MakeMaker)

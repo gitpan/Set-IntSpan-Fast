@@ -7,102 +7,105 @@ use Class::Std;
 use Data::Types qw(is_int);
 use List::Util qw(min max);
 
-use version; our $VERSION = qv('0.0.6');
+use version; our $VERSION = qv( '0.0.7' );
 
 use constant {
-    POSITIVE_INFINITY   =>  2 ** 31 - 2,
-    NEGATIVE_INFINITY   => -2 ** 31 + 1
+    POSITIVE_INFINITY => 2**31 - 2,
+    NEGATIVE_INFINITY => -2**31 + 1
 };
 
 my %edges : ATTR;
 
 sub BUILD {
-    my ($self, $id, $args) = @_;
-    
-    $edges{$id} = [ ];
+    my ( $self, $id, $args ) = @_;
+
+    $edges{$id} = [];
 }
 
 sub invert {
-    my $self  = shift;
-    my $id    = ident($self);
-    
-    if ($self->is_empty()) {
+    my $self = shift;
+    my $id   = ident( $self );
+
+    if ( $self->is_empty() ) {
+
         # Empty set
         $edges{$id} = [ NEGATIVE_INFINITY, POSITIVE_INFINITY ];
-    } else {
+    }
+    else {
         my $edges = $edges{$id};
+
         # Either add or remove infinity from each end. The net
         # effect is always an even number of additions and deletions
-        if ($edges->[0] == NEGATIVE_INFINITY) {
+        if ( $edges->[0] == NEGATIVE_INFINITY ) {
             shift @{$edges};
-        } else {
+        }
+        else {
             unshift @{$edges}, NEGATIVE_INFINITY;
         }
-        
-        if ($edges->[-1] == POSITIVE_INFINITY) {
+
+        if ( $edges->[-1] == POSITIVE_INFINITY ) {
             pop @{$edges};
-        } else {
+        }
+        else {
             push @{$edges}, POSITIVE_INFINITY;
         }
     }
 }
 
 sub copy {
-    my $self  = shift;
-    my $id    = ident($self);
-    my $copy  = Set::IntSpan::Fast->new();
-    my $cid   = ident($copy);
-    $edges{$cid} = [ @{$edges{$id}} ];
+    my $self = shift;
+    my $id   = ident( $self );
+    my $copy = Set::IntSpan::Fast->new();
+    my $cid  = ident( $copy );
+    $edges{$cid} = [ @{ $edges{$id} } ];
     return $copy;
 }
 
 sub _list_to_ranges {
     my @list   = sort { $a <=> $b } @_;
-    my @ranges = ( );
-    my $count  = scalar(@list);
+    my @ranges = ();
+    my $count  = scalar( @list );
     my $pos    = 0;
-    while ($pos < $count) {
+    while ( $pos < $count ) {
         my $end = $pos + 1;
-        $end++ while $end < $count && $list[$end] <= $list[$end-1] + 1;
-        push @ranges, ( $list[$pos], $list[$end-1] );
+        $end++ while $end < $count && $list[$end] <= $list[ $end - 1 ] + 1;
+        push @ranges, ( $list[$pos], $list[ $end - 1 ] );
         $pos = $end;
     }
-    
+
     return @ranges;
 }
 
 sub add {
     my $self = shift;
-    my $id   = ident($self);
-    $self->add_range(_list_to_ranges(@_));
+    $self->add_range( _list_to_ranges( @_ ) );
 }
 
 sub remove {
     my $self = shift;
-    my $id   = ident($self);
-    $self->remove_range(_list_to_ranges(@_));
+    $self->remove_range( _list_to_ranges( @_ ) );
 }
 
 sub _iterate_ranges {
     my $cb = pop @_;
 
-    my $count = scalar(@_);
-    
-    croak "Range list must have an even number of elements"
-        if ($count % 2) != 0;
+    my $count = scalar( @_ );
 
-    for (my $p = 0; $p < $count; $p += 2) {
-        my ($from, $to) = ( $_[$p], $_[$p+1] );
+    croak "Range list must have an even number of elements"
+      if ( $count % 2 ) != 0;
+
+    for ( my $p = 0; $p < $count; $p += 2 ) {
+        my ( $from, $to ) = ( $_[$p], $_[ $p + 1 ] );
         croak "Range limits must be integers"
-            unless is_int($from) && is_int($to);
+          unless is_int( $from ) && is_int( $to );
         croak "Range limits must be in ascending order"
-            unless $from <= $to;
+          unless $from <= $to;
         croak "Value out of range"
-            unless $from >= NEGATIVE_INFINITY && $to <= POSITIVE_INFINITY;
- 
+          unless $from >= NEGATIVE_INFINITY && $to <= POSITIVE_INFINITY;
+
         # Internally we store inclusive/exclusive ranges to
         # simplify comparisons, hence '$to + 1'
-        $cb->($from, $to + 1);
+        $cb->( $from, $to + 1 );
     }
 }
 
@@ -113,100 +116,155 @@ sub _find_pos {
     my $edges = shift;
     my $val   = shift;
     my $low   = shift || 0;
-    my $high  = scalar(@$edges);
+    my $high  = scalar( @$edges );
 
-    while ($low < $high) {
-        my $mid = int(($low + $high) / 2);
-        if ($val < $edges->[$mid]) {
+    while ( $low < $high ) {
+        my $mid = int( ( $low + $high ) / 2 );
+        if ( $val < $edges->[$mid] ) {
             $high = $mid;
-        } elsif ($val > $edges->[$mid]) {
-            $low  = $mid + 1;
-        } else {
+        }
+        elsif ( $val > $edges->[$mid] ) {
+            $low = $mid + 1;
+        }
+        else {
             return $mid;
         }
     }
-    
+
     return $low;
 }
 
 sub add_range {
     my $self  = shift;
-    my $id    = ident($self);
+    my $id    = ident( $self );
     my $edges = $edges{$id};
 
-    _iterate_ranges(@_, sub {
-        my ($from, $to) = @_;
+    _iterate_ranges(
+        @_,
+        sub {
+            my ( $from, $to ) = @_;
 
-        my $fpos = _find_pos($edges, $from);
-        my $tpos = _find_pos($edges, $to + 1, $fpos);
+            my $fpos = _find_pos( $edges, $from );
+            my $tpos = _find_pos( $edges, $to + 1, $fpos );
 
-        $from = $edges->[--$fpos] if ($fpos & 1);
-        $to   = $edges->[$tpos++] if ($tpos & 1);
+            $from = $edges->[ --$fpos ] if ( $fpos & 1 );
+            $to   = $edges->[ $tpos++ ] if ( $tpos & 1 );
 
-        splice @$edges, $fpos, $tpos - $fpos, ( $from, $to );
-    });
+            splice @$edges, $fpos, $tpos - $fpos, ( $from, $to );
+        }
+    );
+}
+
+sub add_from_string {
+    my ( $self ) = shift;
+
+    my $ctl          = {};
+    my $match_number = qr/\s* (-?\d+) \s*/x;
+    my $match_single = qr/^ $match_number $/x;
+    my $match_range;
+
+    # Set defaults
+    unshift @_,
+      {
+        sep   => qr/,/,
+        range => qr/-/,
+      };
+
+    my @to_add = ();
+
+    for my $el ( @_ ) {
+
+        # Allow parsing options to be set.
+        if ( 'HASH' eq ref $el ) {
+            %$ctl = ( %$ctl, %$el );
+            for ( values %$ctl ) {
+                $_ = quotemeta( $_ ) unless ref $_ eq 'Regexp';
+            }
+            $match_range = qr/^ $match_number $ctl->{range} $match_number $/x;
+        }
+        else {
+            for my $part ( split $ctl->{sep}, $el ) {
+                if ( my ( $start, $end ) = ( $part =~ $match_range ) ) {
+                    push @to_add, $start, $end;
+                }
+                else {
+                    croak "Invalid range string" unless $part =~ $match_single;
+                    push @to_add, $1, $1;
+                }
+            }
+        }
+    }
+
+    $self->add_range( @to_add );
 }
 
 sub remove_range {
     my $self = shift;
 
     $self->invert();
-    $self->add_range(@_);
+    $self->add_range( @_ );
+    $self->invert();
+}
+
+sub remove_from_string {
+    my $self = shift;
+    $self->invert();
+    $self->add_from_string( @_ );
     $self->invert();
 }
 
 sub merge {
     my $self = shift;
 
-    for my $other (@_) {
+    for my $other ( @_ ) {
         my $iter = $other->iterate_runs();
-        while (my ($from, $to) = $iter->()) {
-            $self->add_range($from, $to);
+        while ( my ( $from, $to ) = $iter->() ) {
+            $self->add_range( $from, $to );
         }
     }
 }
 
 sub is_empty {
     my $self = shift;
-    my $id   = ident($self);
-    
-    return @{$edges{$id}} == 0;
+    my $id   = ident( $self );
+
+    return @{ $edges{$id} } == 0;
 }
 
 sub contains_all {
     my $self  = shift;
-    my $id    = ident($self);
+    my $id    = ident( $self );
     my $edges = $edges{$id};
-    
-    for my $i (@_) {
-        my $pos = _find_pos($edges, $i + 1);
+
+    for my $i ( @_ ) {
+        my $pos = _find_pos( $edges, $i + 1 );
         return unless $pos & 1;
     }
-    
+
     return 1;
 }
 
 sub contains {
     my $self = shift;
-    return $self->contains_all(@_);
+    return $self->contains_all( @_ );
 }
 
 sub contains_any {
-    my $self = shift;
-    my $id   = ident($self);
+    my $self  = shift;
+    my $id    = ident( $self );
     my $edges = $edges{$id};
-    
-    for my $i (@_) {
-        my $pos = _find_pos($edges, $i + 1);
+
+    for my $i ( @_ ) {
+        my $pos = _find_pos( $edges, $i + 1 );
         return 1 if $pos & 1;
     }
-    
+
     return;
 }
 
 sub union {
     my $new = Set::IntSpan::Fast->new();
-    $new->merge(@_);
+    $new->merge( @_ );
     return $new;
 }
 
@@ -223,51 +281,53 @@ sub complement {
 
 sub intersection {
     my $new = Set::IntSpan::Fast->new();
-    $new->merge(map { $_->complement() } @_);
+    $new->merge( map { $_->complement() } @_ );
     $new->invert();
     return $new;
 }
 
 sub xor {
-    return intersection(union(@_), intersection(@_)->complement());
+    return intersection( union( @_ ), intersection( @_ )->complement() );
 }
 
 sub diff {
     my $first = shift;
-    return intersection($first, union(@_)->complement());
+    return intersection( $first, union( @_ )->complement() );
 }
 
 sub as_string {
     my $self = shift;
+    my $ctl = { sep => ',', range => '-' };
+    %$ctl = ( %$ctl, %{ $_[0] } ) if @_;
     my $iter = $self->iterate_runs();
-    my @runs = ( );
-    while (my ($from, $to) = $iter->()) {
-        push @runs, $from == $to ? $from : "$from-$to";
+    my @runs = ();
+    while ( my ( $from, $to ) = $iter->() ) {
+        push @runs, $from == $to ? $from : join( $ctl->{range}, $from, $to );
     }
-    return join(',', @runs);
+    return join( $ctl->{sep}, @runs );
 }
 
 sub as_array {
     my $self = shift;
-    my @ar   = ( );
+    my @ar   = ();
     my $iter = $self->iterate_runs();
-    while (my ($from, $to) = $iter->()) {
+    while ( my ( $from, $to ) = $iter->() ) {
         push @ar, ( $from .. $to );
     }
-    
+
     return @ar;
 }
 
 sub iterate_runs {
-    my $self  = shift;
-    my $id    = ident($self);
+    my $self = shift;
+    my $id   = ident( $self );
 
     my $pos   = 0;
     my $edges = $edges{$id};
-    
+
     return sub {
-        return if $pos >= scalar(@$edges);
-        my @r = ( $edges->[$pos], $edges->[$pos + 1] - 1 );
+        return if $pos >= scalar( @$edges );
+        my @r = ( $edges->[$pos], $edges->[ $pos + 1 ] - 1 );
         $pos += 2;
         return @r;
     };
@@ -277,45 +337,47 @@ sub cardinality {
     my $self = shift;
     my $card = 0;
     my $iter = $self->iterate_runs();
-    while (my ($from, $to) = $iter->()) {
+    while ( my ( $from, $to ) = $iter->() ) {
         $card += $to - $from + 1;
     }
-    
+
     return $card;
 }
 
 sub subset {
-    my $self   = shift;
-    my $other  = shift || croak "I need two sets to compare";
-    return $self->equals($self->intersection($other));
+    my $self = shift;
+    my $other = shift || croak "I need two sets to compare";
+    return $self->equals( $self->intersection( $other ) );
 }
 
 sub superset {
-    return subset(reverse(@_));
+    return subset( reverse( @_ ) );
 }
 
 sub equals {
+
     # Array of array refs
-    my @edges = grep { defined($_) }
-                map  { $edges{ident($_)} } @_;
-    my $medge = scalar(@edges) - 1;
-                
+    my @edges = grep { defined( $_ ) }
+      map { $edges{ ident( $_ ) } } @_;
+    my $medge = scalar( @edges ) - 1;
+
     return unless $medge > 0;
 
-    POS: for (my $pos = 0;; $pos++) {
+    POS: for ( my $pos = 0;; $pos++ ) {
         my $v = $edges[0]->[$pos];
-        if (defined($v)) {
-            for (@edges[1 .. $medge]) {
+        if ( defined( $v ) ) {
+            for ( @edges[ 1 .. $medge ] ) {
                 my $vv = $_->[$pos];
-                return unless defined($vv) && $vv == $v;
+                return unless defined( $vv ) && $vv == $v;
             }
-        } else {
-            for (@edges[1 .. $medge]) {
+        }
+        else {
+            for ( @edges[ 1 .. $medge ] ) {
                 return if defined $_->[$pos];
             }
         }
-        
-        last POS unless defined($v);
+
+        last POS unless defined( $v );
     }
 
     return 1;
@@ -330,7 +392,7 @@ Set::IntSpan::Fast - Fast handling of sets containing integer spans.
 
 =head1 VERSION
 
-This document describes Set::IntSpan::Fast version 0.0.6
+This document describes Set::IntSpan::Fast version 0.0.7
 
 =head1 SYNOPSIS
 
@@ -413,6 +475,41 @@ specified:
 
 Each pair of arguments constitute a range. The second argument in each
 pair must be greater than or equal to the first.
+
+=item C<add_from_string($string)>
+
+Add items to a set from a string representation, of the same form as
+C<as_string>. Multiple strings may be supplied:
+
+    $set->add_from_string( '1-10, 30-40', '100-200' );
+
+is equivalent to
+
+    $set->add_from_string( '1-10, 30-40, 100-200' );
+
+By default items are separated by ',' and ranges delimited by '-'. You
+may select different punctuation like this:
+
+    $set->add_from_string( 
+        { sep => ';', range => ':' },
+        '1;3;5;7:11;19:27'
+    );
+    
+When supplying an options hash in this way the C<sep> and C<range>
+option may be either a regular expression or a literal string.
+
+    $set->add_from_string( 
+        { sep => qr/:+/, range => qr/[.]+/ },
+        '1::3::5:7...11:19..27'
+    );
+
+And embedded whitespace in the string will be ignored.
+
+=item C<remove_from_string($string)>
+
+Remove items to a set from a string representation, of the same form as
+C<as_string>. As with C<add_from_string> the punctuation characters may
+be specified.
 
 =item C<remove_range($from, $to)>
 
@@ -553,6 +650,11 @@ Return a string representation of the set.
     $set->add_range(100, 1_000_000);
     print $set->as_string(), "\n";    # prints 1,3,5,7,9,100-1000000
 
+You may optionally supply a hash containing C<sep> and C<range> options:
+
+    print $set->as_string({ sep => ';', range => '*' ), "\n";
+        # prints 1;3;5;7;9;100*1000000
+
 =item C<iterate_runs()>
 
 Returns an iterator that returns each run of integers in the set in
@@ -621,6 +723,10 @@ or as a method:
 
     $ss = $s1->subset($s2);
 
+=item C<< Invalid Range String >>
+
+The range string must only contain a comma separated list of ranges, with a hyphen used as the range limit separator. e.g. "1,5,8-12,15-29".
+
 =back
 
 =head1 CONFIGURATION AND ENVIRONMENT
@@ -656,6 +762,12 @@ L<http://rt.cpan.org>.
 =head1 AUTHOR
 
 Andy Armstrong C<< <andy@hexten.net> >>
+
+=head1 CREDITS
+
+K. J. Cheetham L<< http://www.shadowcatsystems.co.uk/ >> for
+add_from_string, remove_from_string. I butchered his code so any
+errors are mine.
 
 =head1 LICENCE AND COPYRIGHT
 
