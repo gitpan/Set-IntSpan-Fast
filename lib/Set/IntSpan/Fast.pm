@@ -6,7 +6,7 @@ use Carp;
 use Data::Types qw(is_int);
 use List::Util qw(min max);
 
-use version; our $VERSION = qv( '0.0.8' );
+use version; our $VERSION = qv( '0.0.9' );
 
 use constant {
     POSITIVE_INFINITY => 2**31 - 2,
@@ -15,7 +15,9 @@ use constant {
 
 sub new {
     my $class = shift;
-    return bless [], $class;
+    my $self = bless [], $class;
+    $self->add_from_string( @_ ) if @_;
+    return $self;
 }
 
 sub invert {
@@ -27,6 +29,7 @@ sub invert {
         @$self = ( NEGATIVE_INFINITY, POSITIVE_INFINITY );
     }
     else {
+
         # Either add or remove infinity from each end. The net
         # effect is always an even number of additions and deletions
         if ( $self->[0] == NEGATIVE_INFINITY ) {
@@ -153,16 +156,10 @@ sub add_from_string {
     my $match_single = qr/^ $match_number $/x;
     my $match_range;
 
-    # Set defaults
-    unshift @_,
-      {
-        sep   => qr/,/,
-        range => qr/-/,
-      };
-
     my @to_add = ();
 
-    for my $el ( @_ ) {
+    # Iterate args. Default punctuation spec prepended.
+    for my $el ( { sep => qr/,/, range => qr/-/, }, @_ ) {
 
         # Allow parsing options to be set.
         if ( 'HASH' eq ref $el ) {
@@ -177,9 +174,11 @@ sub add_from_string {
                 if ( my ( $start, $end ) = ( $part =~ $match_range ) ) {
                     push @to_add, $start, $end;
                 }
+                elsif ( my ( $el ) = ( $part =~ $match_single ) ) {
+                    push @to_add, $el, $el;
+                }
                 else {
                     croak "Invalid range string" unless $part =~ $match_single;
-                    push @to_add, $1, $1;
                 }
             }
         }
@@ -374,7 +373,7 @@ Set::IntSpan::Fast - Fast handling of sets containing integer spans.
 
 =head1 VERSION
 
-This document describes Set::IntSpan::Fast version 0.0.8
+This document describes Set::IntSpan::Fast version 0.0.9
 
 =head1 SYNOPSIS
 
@@ -428,7 +427,19 @@ definition of infinity we're using):
 
 =item C<new()>
 
-Create a new, empty set.
+Create a new set. Any arguments will be processed by a call to
+C<add_from_string>:
+
+    my $set = Set::IntSpan::Fast->new( '1, 3, 5, 10-100' );
+
+Because C<add_from_string> handles multiple arguments this will work:
+
+    my @nums = ( 1, 2, 3, 4, 5 );
+    my $set = Set::IntSpan::Fast->new( @nums );
+
+Bear in mind though that this validates each element of the array is it
+would if you called C<add_from_string> so for large sets it will be
+slightly more efficient to create an empty set and then call C<add>.
 
 =item C<copy()>
 
@@ -448,7 +459,7 @@ inclusive.
 Remove the specified integers from the set. It is not an error to remove
 non-members. Any number of arguments may be specified.
 
-=item C<add_range($from, $to)>
+=item C<add_range( $from, $to )>
 
 Add the inclusive range of integers to the set. Multiple ranges may be
 specified:
@@ -458,7 +469,7 @@ specified:
 Each pair of arguments constitute a range. The second argument in each
 pair must be greater than or equal to the first.
 
-=item C<add_from_string($string)>
+=item C<add_from_string( $string )>
 
 Add items to a set from a string representation, of the same form as
 C<as_string>. Multiple strings may be supplied:
@@ -487,7 +498,7 @@ option may be either a regular expression or a literal string.
 
 And embedded whitespace in the string will be ignored.
 
-=item C<remove_range($from, $to)>
+=item C<remove_range( $from, $to )>
 
 Remove the inclusive range of integers from the set. Multiple ranges may
 be specified:
@@ -497,7 +508,7 @@ be specified:
 Each pair of arguments constitute a range. The second argument in each
 pair must be greater than or equal to the first.
 
-=item C<remove_from_string($string)>
+=item C<remove_from_string( $string )>
 
 Remove items to a set from a string representation, of the same form as
 C<as_string>. As with C<add_from_string> the punctuation characters may
@@ -534,7 +545,7 @@ about our definition of infinity above.
 Return a new set that is the union of this set and all of the supplied
 sets. May be called either as a method:
 
-    $un = $set->union($other_set);
+    $un = $set->union( $other_set );
     
 or as a function:
 
@@ -545,7 +556,7 @@ or as a function:
 Return a new set that is the intersection of this set and all the supplied
 sets. May be called either as a method:
 
-    $in = $set->intersection($other_set);
+    $in = $set->intersection( $other_set );
     
 or as a function:
 
@@ -575,7 +586,7 @@ supplied set.
 
 Return true if the set is empty.
 
-=item C<contains($number)>
+=item C<contains( $number )>
 
 Return true if the specified number is contained in the set.
 
@@ -596,7 +607,7 @@ Returns the number of members in the set.
 Returns true if this set is a superset of the supplied set. A set is
 always a superset of itself, or in other words
 
-    $set->superset($set)
+    $set->superset( $set )
     
 returns true.
 
@@ -605,7 +616,7 @@ returns true.
 Returns true if this set is a subset of the supplied set. A set is
 always a subset of itself, or in other words
 
-    $set->subset($set)
+    $set->subset( $set )
     
 returns true.
 
@@ -644,7 +655,7 @@ ascending order. To iterate all the members of the set do something
 like this:
 
     my $iter = $set->iterate_runs();
-    while (my ($from, $to) = $iter->()) {
+    while (my ( $from, $to ) = $iter->()) {
         for my $member ($from .. $to) {
             print "$member\n";
         }
@@ -703,7 +714,7 @@ either as a function:
     
 or as a method:
 
-    $ss = $s1->subset($s2);
+    $ss = $s1->subset( $s2 );
 
 =item C<< Invalid Range String >>
 

@@ -1,4 +1,4 @@
-use Test::More tests => 35;
+use Test::More tests => 37;
 
 BEGIN {
     use_ok( 'Set::IntSpan::Fast' );
@@ -29,6 +29,7 @@ BEGIN {
     is($set->cardinality(), scalar(@members), 'cardinality');
     
     my $copy = $set->copy();
+    isa_ok $copy, 'Set::IntSpan::Fast';
     @orig = $set->as_array();
     @copy = $copy->as_array();
     
@@ -37,6 +38,7 @@ BEGIN {
     # Union
     my $first = shift @sets;
     my $merged = $first->union(@sets);
+    isa_ok $merged, 'Set::IntSpan::Fast';
     @got = $merged->as_array();
     is_deeply(\@got, \@members, 'union');
 

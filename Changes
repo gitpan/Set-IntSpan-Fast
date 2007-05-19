@@ -25,3 +25,6 @@ Revision history for Set-IntSpan-Fast
 0.0.8   2007-05-19
         Removed dependency on Class::Std. Thanks to KJC for
         suggesting this.
+
+0.0.9   2007-05-19
+        Make it possible to pass args to constructor.
