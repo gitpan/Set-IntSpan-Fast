@@ -16,7 +16,6 @@ WriteMakefile(
     PREREQ_PM     => {
         'Test::More'  => 0,
         'version'     => 0,
-        'Class::Std'  => 0,
         'Data::Types' => 0,
         'List::Util'  => 0,
     },

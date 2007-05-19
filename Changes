@@ -21,3 +21,7 @@ Revision history for Set-IntSpan-Fast
 0.0.7   2007-05-19
         Added add_from_string, remove_from_string. Thanks to K. J.
         Cheetham
+
+0.0.8   2007-05-19
+        Removed dependency on Class::Std. Thanks to KJC for
+        suggesting this.

@@ -1,4 +1,4 @@
-Set-IntSpan-Fast version 0.0.1
+Set-IntSpan-Fast version 0.0.8
 
 INSTALLATION
 
@@ -20,11 +20,12 @@ Alternatively, to install with Module::Build, you can use the following commands
 
 DEPENDENCIES
 
-None.
+    Data::Types
+    List::Util
 
 COPYRIGHT AND LICENCE
 
-Copyright (C) 2006, Andy Armstrong
+Copyright (C) 2006, 2007, Andy Armstrong
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

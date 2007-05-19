@@ -3,61 +3,52 @@ package Set::IntSpan::Fast;
 use warnings;
 use strict;
 use Carp;
-use Class::Std;
 use Data::Types qw(is_int);
 use List::Util qw(min max);
 
-use version; our $VERSION = qv( '0.0.7' );
+use version; our $VERSION = qv( '0.0.8' );
 
 use constant {
     POSITIVE_INFINITY => 2**31 - 2,
     NEGATIVE_INFINITY => -2**31 + 1
 };
 
-my %edges : ATTR;
-
-sub BUILD {
-    my ( $self, $id, $args ) = @_;
-
-    $edges{$id} = [];
+sub new {
+    my $class = shift;
+    return bless [], $class;
 }
 
 sub invert {
     my $self = shift;
-    my $id   = ident( $self );
 
     if ( $self->is_empty() ) {
 
         # Empty set
-        $edges{$id} = [ NEGATIVE_INFINITY, POSITIVE_INFINITY ];
+        @$self = ( NEGATIVE_INFINITY, POSITIVE_INFINITY );
     }
     else {
-        my $edges = $edges{$id};
-
         # Either add or remove infinity from each end. The net
         # effect is always an even number of additions and deletions
-        if ( $edges->[0] == NEGATIVE_INFINITY ) {
-            shift @{$edges};
+        if ( $self->[0] == NEGATIVE_INFINITY ) {
+            shift @{$self};
         }
         else {
-            unshift @{$edges}, NEGATIVE_INFINITY;
+            unshift @{$self}, NEGATIVE_INFINITY;
         }
 
-        if ( $edges->[-1] == POSITIVE_INFINITY ) {
-            pop @{$edges};
+        if ( $self->[-1] == POSITIVE_INFINITY ) {
+            pop @{$self};
         }
         else {
-            push @{$edges}, POSITIVE_INFINITY;
+            push @{$self}, POSITIVE_INFINITY;
         }
     }
 }
 
 sub copy {
     my $self = shift;
-    my $id   = ident( $self );
     my $copy = Set::IntSpan::Fast->new();
-    my $cid  = ident( $copy );
-    $edges{$cid} = [ @{ $edges{$id} } ];
+    @$copy = @$self;
     return $copy;
 }
 
@@ -113,17 +104,18 @@ sub _iterate_ranges {
 # supplied value is larger than any element in the list the returned
 # value will be equal to the size of the list.
 sub _find_pos {
-    my $edges = shift;
-    my $val   = shift;
-    my $low   = shift || 0;
-    my $high  = scalar( @$edges );
+    my $self = shift;
+    my $val  = shift;
+    my $low  = shift || 0;
+
+    my $high = scalar( @$self );
 
     while ( $low < $high ) {
         my $mid = int( ( $low + $high ) / 2 );
-        if ( $val < $edges->[$mid] ) {
+        if ( $val < $self->[$mid] ) {
             $high = $mid;
         }
-        elsif ( $val > $edges->[$mid] ) {
+        elsif ( $val > $self->[$mid] ) {
             $low = $mid + 1;
         }
         else {
@@ -135,28 +127,26 @@ sub _find_pos {
 }
 
 sub add_range {
-    my $self  = shift;
-    my $id    = ident( $self );
-    my $edges = $edges{$id};
+    my $self = shift;
 
     _iterate_ranges(
         @_,
         sub {
             my ( $from, $to ) = @_;
 
-            my $fpos = _find_pos( $edges, $from );
-            my $tpos = _find_pos( $edges, $to + 1, $fpos );
+            my $fpos = $self->_find_pos( $from );
+            my $tpos = $self->_find_pos( $to + 1, $fpos );
 
-            $from = $edges->[ --$fpos ] if ( $fpos & 1 );
-            $to   = $edges->[ $tpos++ ] if ( $tpos & 1 );
+            $from = $self->[ --$fpos ] if ( $fpos & 1 );
+            $to   = $self->[ $tpos++ ] if ( $tpos & 1 );
 
-            splice @$edges, $fpos, $tpos - $fpos, ( $from, $to );
+            splice @$self, $fpos, $tpos - $fpos, ( $from, $to );
         }
     );
 }
 
 sub add_from_string {
-    my ( $self ) = shift;
+    my $self = shift;
 
     my $ctl          = {};
     my $match_number = qr/\s* (-?\d+) \s*/x;
@@ -208,6 +198,7 @@ sub remove_range {
 
 sub remove_from_string {
     my $self = shift;
+
     $self->invert();
     $self->add_from_string( @_ );
     $self->invert();
@@ -226,18 +217,15 @@ sub merge {
 
 sub is_empty {
     my $self = shift;
-    my $id   = ident( $self );
 
-    return @{ $edges{$id} } == 0;
+    return @$self == 0;
 }
 
 sub contains_all {
-    my $self  = shift;
-    my $id    = ident( $self );
-    my $edges = $edges{$id};
+    my $self = shift;
 
     for my $i ( @_ ) {
-        my $pos = _find_pos( $edges, $i + 1 );
+        my $pos = $self->_find_pos( $i + 1 );
         return unless $pos & 1;
     }
 
@@ -250,12 +238,10 @@ sub contains {
 }
 
 sub contains_any {
-    my $self  = shift;
-    my $id    = ident( $self );
-    my $edges = $edges{$id};
+    my $self = shift;
 
     for my $i ( @_ ) {
-        my $pos = _find_pos( $edges, $i + 1 );
+        my $pos = $self->_find_pos( $i + 1 );
         return 1 if $pos & 1;
     }
 
@@ -320,14 +306,12 @@ sub as_array {
 
 sub iterate_runs {
     my $self = shift;
-    my $id   = ident( $self );
 
-    my $pos   = 0;
-    my $edges = $edges{$id};
+    my $pos = 0;
 
     return sub {
-        return if $pos >= scalar( @$edges );
-        my @r = ( $edges->[$pos], $edges->[ $pos + 1 ] - 1 );
+        return if $pos >= scalar( @$self );
+        my @r = ( $self->[$pos], $self->[ $pos + 1 ] - 1 );
         $pos += 2;
         return @r;
     };
@@ -355,13 +339,11 @@ sub superset {
 }
 
 sub equals {
+    return unless @_;
 
     # Array of array refs
-    my @edges = grep { defined( $_ ) }
-      map { $edges{ ident( $_ ) } } @_;
+    my @edges = @_;
     my $medge = scalar( @edges ) - 1;
-
-    return unless $medge > 0;
 
     POS: for ( my $pos = 0;; $pos++ ) {
         my $v = $edges[0]->[$pos];
@@ -392,7 +374,7 @@ Set::IntSpan::Fast - Fast handling of sets containing integer spans.
 
 =head1 VERSION
 
-This document describes Set::IntSpan::Fast version 0.0.7
+This document describes Set::IntSpan::Fast version 0.0.8
 
 =head1 SYNOPSIS
 
@@ -505,12 +487,6 @@ option may be either a regular expression or a literal string.
 
 And embedded whitespace in the string will be ignored.
 
-=item C<remove_from_string($string)>
-
-Remove items to a set from a string representation, of the same form as
-C<as_string>. As with C<add_from_string> the punctuation characters may
-be specified.
-
 =item C<remove_range($from, $to)>
 
 Remove the inclusive range of integers from the set. Multiple ranges may
@@ -520,6 +496,12 @@ be specified:
 
 Each pair of arguments constitute a range. The second argument in each
 pair must be greater than or equal to the first.
+
+=item C<remove_from_string($string)>
+
+Remove items to a set from a string representation, of the same form as
+C<as_string>. As with C<add_from_string> the punctuation characters may
+be specified.
 
 =item C<invert()>
 
@@ -742,7 +724,6 @@ variables.
 
 =head1 DEPENDENCIES
 
-    Class::Std
     Data::Types
     List::Util
 
