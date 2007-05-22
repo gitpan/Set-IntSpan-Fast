@@ -28,3 +28,6 @@ Revision history for Set-IntSpan-Fast
 
 0.0.9   2007-05-19
         Make it possible to pass args to constructor.
+
+1.0     2007-05-22
+        Fixed use constants for 5.6.2 compatibility

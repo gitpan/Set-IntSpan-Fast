@@ -6,12 +6,10 @@ use Carp;
 use Data::Types qw(is_int);
 use List::Util qw(min max);
 
-use version; our $VERSION = qv( '0.0.9' );
+use version; our $VERSION = qv( '1.0' );
 
-use constant {
-    POSITIVE_INFINITY => 2**31 - 2,
-    NEGATIVE_INFINITY => -2**31 + 1
-};
+use constant POSITIVE_INFINITY => 2**31 - 2;
+use constant NEGATIVE_INFINITY => -2**31 + 100;
 
 sub new {
     my $class = shift;
@@ -373,7 +371,7 @@ Set::IntSpan::Fast - Fast handling of sets containing integer spans.
 
 =head1 VERSION
 
-This document describes Set::IntSpan::Fast version 0.0.9
+This document describes Set::IntSpan::Fast version 1.0
 
 =head1 SYNOPSIS
 
