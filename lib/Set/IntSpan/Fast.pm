@@ -6,7 +6,7 @@ use Carp;
 use Data::Types qw(is_int);
 use List::Util qw(min max);
 
-use version; our $VERSION = qv( '1.0' );
+use version; our $VERSION = qv( '1.0.1' );
 
 use constant POSITIVE_INFINITY => 2**31 - 2;
 use constant NEGATIVE_INFINITY => -2**31 + 100;
@@ -78,29 +78,6 @@ sub remove {
     $self->remove_range( _list_to_ranges( @_ ) );
 }
 
-sub _iterate_ranges {
-    my $cb = pop @_;
-
-    my $count = scalar( @_ );
-
-    croak "Range list must have an even number of elements"
-      if ( $count % 2 ) != 0;
-
-    for ( my $p = 0; $p < $count; $p += 2 ) {
-        my ( $from, $to ) = ( $_[$p], $_[ $p + 1 ] );
-        croak "Range limits must be integers"
-          unless is_int( $from ) && is_int( $to );
-        croak "Range limits must be in ascending order"
-          unless $from <= $to;
-        croak "Value out of range"
-          unless $from >= NEGATIVE_INFINITY && $to <= POSITIVE_INFINITY;
-
-        # Internally we store inclusive/exclusive ranges to
-        # simplify comparisons, hence '$to + 1'
-        $cb->( $from, $to + 1 );
-    }
-}
-
 # Return the index of the first element >= the supplied value. If the
 # supplied value is larger than any element in the list the returned
 # value will be equal to the size of the list.
@@ -125,6 +102,29 @@ sub _find_pos {
     }
 
     return $low;
+}
+
+sub _iterate_ranges {
+    my $cb = pop @_;
+
+    my $count = scalar( @_ );
+
+    croak "Range list must have an even number of elements"
+      if ( $count % 2 ) != 0;
+
+    for ( my $p = 0; $p < $count; $p += 2 ) {
+        my ( $from, $to ) = ( $_[$p], $_[ $p + 1 ] );
+        croak "Range limits must be integers"
+          unless is_int( $from ) && is_int( $to );
+        croak "Range limits must be in ascending order"
+          unless $from <= $to;
+        croak "Value out of range"
+          unless $from >= NEGATIVE_INFINITY && $to <= POSITIVE_INFINITY;
+
+        # Internally we store inclusive/exclusive ranges to
+        # simplify comparisons, hence '$to + 1'
+        $cb->( $from, $to + 1 );
+    }
 }
 
 sub add_range {
@@ -304,20 +304,54 @@ sub as_array {
 sub iterate_runs {
     my $self = shift;
 
-    my $pos = 0;
+    if ( @_ ) {
 
-    return sub {
-        return if $pos >= scalar( @$self );
-        my @r = ( $self->[$pos], $self->[ $pos + 1 ] - 1 );
-        $pos += 2;
-        return @r;
-    };
+        # Clipped iterator
+        my ( $clip_lo, $clip_hi ) = @_;
+
+        my $pos = $self->_find_pos( $clip_lo ) & ~1;
+        my $limit = ( $self->_find_pos( $clip_hi + 1, $pos ) + 1 ) & ~1;
+
+        return sub {
+            TRY: {
+                return if $pos >= $limit;
+
+                my @r = ( $self->[$pos], $self->[ $pos + 1 ] - 1 );
+                $pos += 2;
+
+                # Catch some edge cases
+                redo TRY if $r[1] < $clip_lo;
+                return   if $r[0] > $clip_hi;
+
+                # Clip to range
+                $r[0] = $clip_lo if $r[0] < $clip_lo;
+                $r[1] = $clip_hi if $r[1] > $clip_hi;
+
+                return @r;
+            }
+        };
+    }
+    else {
+
+        # Unclipped iterator
+        my $pos   = 0;
+        my $limit = scalar( @$self );
+
+        return sub {
+            return if $pos >= $limit;
+            my @r = ( $self->[$pos], $self->[ $pos + 1 ] - 1 );
+            $pos += 2;
+            return @r;
+        };
+    }
+
 }
 
 sub cardinality {
     my $self = shift;
+
     my $card = 0;
-    my $iter = $self->iterate_runs();
+    my $iter = $self->iterate_runs( @_ );
     while ( my ( $from, $to ) = $iter->() ) {
         $card += $to - $from + 1;
     }
@@ -371,7 +405,7 @@ Set::IntSpan::Fast - Fast handling of sets containing integer spans.
 
 =head1 VERSION
 
-This document describes Set::IntSpan::Fast version 1.0
+This document describes Set::IntSpan::Fast version 1.0.1
 
 =head1 SYNOPSIS
 
@@ -596,9 +630,10 @@ Return true if the set contains any of the specified numbers.
 
 Return true if the set contains all of the specified numbers.
 
-=item C<cardinality()>
+=item C<cardinality( [ $clip_lo, $clip_hi ] )>
 
-Returns the number of members in the set.
+Returns the number of members in the set. If a clipping range is supplied
+return the count of members that fall within that inclusive range.
 
 =item C<superset( $set )>
 
@@ -646,7 +681,7 @@ You may optionally supply a hash containing C<sep> and C<range> options:
     print $set->as_string({ sep => ';', range => '*' ), "\n";
         # prints 1;3;5;7;9;100*1000000
 
-=item C<iterate_runs()>
+=item C<iterate_runs( [ $clip_lo, $clip_hi ] )>
 
 Returns an iterator that returns each run of integers in the set in
 ascending order. To iterate all the members of the set do something
@@ -658,6 +693,9 @@ like this:
             print "$member\n";
         }
     }
+
+If a clipping range is specified only those members that fall within
+the range will be returned.
 
 =back
 
