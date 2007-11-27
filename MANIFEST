@@ -3,13 +3,14 @@ lib/Set/IntSpan/Fast.pm
 Makefile.PL
 MANIFEST
 README
-t/00.load.t
-t/10.construct.t
-t/20.basic.t
-t/30.misc.t
-t/40.string.t
-t/50.miscstring.t
+t/00-load.t
+t/all-range.t
+t/basic.t
+t/construct.t
+t/misc.t
+t/miscstring.t
 t/pod-coverage.t
 t/pod.t
+t/string.t
 META.yml                                 Module meta-data (added by MakeMaker)
 SIGNATURE                                Public-key signature (added by MakeMaker)
