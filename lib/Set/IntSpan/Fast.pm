@@ -12,12 +12,12 @@ Set::IntSpan::Fast - Fast handling of sets containing integer spans.
 
 =head1 VERSION
 
-This document describes Set::IntSpan::Fast version 1.11
+This document describes Set::IntSpan::Fast version 1.12
 
 =cut
 
 use vars qw( $VERSION );
-$VERSION = '1.11';
+$VERSION = '1.12';
 
 =head1 SYNOPSIS
 
@@ -159,8 +159,11 @@ Return an identical copy of the set.
 =cut
 
 sub copy {
-    my $self = shift;
-    my $copy = Set::IntSpan::Fast->new();
+    my $self  = shift;
+    my $class = ref $self;
+    my $copy  = $class->new();
+    # This might not work for subclasses - in which case they should
+    # override copy
     @$copy = @$self;
     return $copy;
 }
@@ -176,7 +179,7 @@ inclusive.
 
 sub add {
     my $self = shift;
-    $self->add_range( _list_to_ranges( @_ ) );
+    $self->add_range( $self->_list_to_ranges( @_ ) );
 }
 
 =head2 C<remove( $number ... )>
@@ -188,7 +191,7 @@ non-members. Any number of arguments may be specified.
 
 sub remove {
     my $self = shift;
-    $self->remove_range( _list_to_ranges( @_ ) );
+    $self->remove_range( $self->_list_to_ranges( @_ ) );
 }
 
 =head2 C<add_range( $from, $to )>
@@ -206,7 +209,7 @@ pair must be greater than or equal to the first.
 sub add_range {
     my $self = shift;
 
-    _iterate_ranges(
+    $self->_iterate_ranges(
         @_,
         sub {
             my ( $from, $to ) = @_;
@@ -371,18 +374,14 @@ sub complement {
 =head3 C<union( $set ... )>
 
 Return a new set that is the union of this set and all of the supplied
-sets. May be called either as a method:
+sets.
 
     $un = $set->union( $other_set );
-    
-or as a function:
-
-    $un = Set::IntSpan::Fast::union( $set1, $set2, $set3 );
 
 =cut
 
 sub union {
-    my $new = Set::IntSpan::Fast->new();
+    my $new = shift->copy;
     $new->merge( @_ );
     return $new;
 }
@@ -390,19 +389,17 @@ sub union {
 =head3 C<intersection( $set )>
 
 Return a new set that is the intersection of this set and all the supplied
-sets. May be called either as a method:
+sets.
 
     $in = $set->intersection( $other_set );
-    
-or as a function:
-
-    $in = Set::IntSpan::Fast::intersection( $set1, $set2, $set3 );
 
 =cut
 
 sub intersection {
-    my $new = Set::IntSpan::Fast->new();
-    $new->merge( map { $_->complement() } @_ );
+    my $self  = shift;
+    my $class = ref $self;
+    my $new   = $class->new();
+    $new->merge( map { $_->complement() } $self, @_ );
     $new->invert();
     return $new;
 }
@@ -414,13 +411,12 @@ or the supplied set but not both. Can actually handle more than two sets
 in which case it returns a set that contains all the members that are in
 some of the sets but not all of the sets.
 
-Can be called as a method or a function.
-
 =cut
 
 sub xor {
-    return intersection( union( @_ ),
-        intersection( @_ )->complement() );
+    my $self = shift;
+    return $self->union( @_ )
+      ->intersection( $self->intersection( @_ )->complement() );
 }
 
 =head3 C<diff( $set )>
@@ -431,8 +427,9 @@ supplied set.
 =cut
 
 sub diff {
-    my $first = shift;
-    return intersection( $first, union( @_ )->complement() );
+    my $self  = shift;
+    my $other = shift;
+    return $self->intersection( $other->union( @_ )->complement() );
 }
 
 =head2 Tests
@@ -445,7 +442,6 @@ Return true if the set is empty.
 
 sub is_empty {
     my $self = shift;
-
     return @$self == 0;
 }
 
@@ -538,7 +534,8 @@ returns true.
 =cut
 
 sub superset {
-    return subset( reverse( @_ ) );
+    my $other = pop;
+    return $other->subset( reverse( @_ ) );
 }
 
 =head3 C<subset( $set )>
@@ -706,6 +703,7 @@ sub iterate_runs {
 }
 
 sub _list_to_ranges {
+    my $self   = shift;
     my @list   = sort { $a <=> $b } @_;
     my @ranges = ();
     my $count  = scalar( @list );
@@ -748,7 +746,8 @@ sub _find_pos {
 }
 
 sub _iterate_ranges {
-    my $cb = pop @_;
+    my $self = shift;
+    my $cb   = pop;
 
     my $count = scalar( @_ );
 
@@ -867,7 +866,7 @@ errors are mine.
 
 =head1 LICENCE AND COPYRIGHT
 
-Copyright (c) 2006, Andy Armstrong C<< <andy@hexten.net> >>. All
+Copyright (c) 2006-2008, Andy Armstrong C<< <andy@hexten.net> >>. All
 rights reserved.
 
 This module is free software; you can redistribute it and/or modify it
