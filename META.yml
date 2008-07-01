@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                Set-IntSpan-Fast
-version:             1.13
+version:             1.14
 abstract:            Fast handling of sets containing integer spans.
 license:             perl
 author:              
