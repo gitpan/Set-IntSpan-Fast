@@ -12,27 +12,27 @@ Set::IntSpan::Fast - Fast handling of sets containing integer spans.
 
 =head1 VERSION
 
-This document describes Set::IntSpan::Fast version 1.14
+This document describes Set::IntSpan::Fast version 1.15
 
 =cut
 
 BEGIN {
-    our $VERSION = '1.14';
-    our @ISA;
-    eval "use Set::IntSpan::Fast::XS ()";
-    if ( $@ ) {
-        if ( $@ =~ /^Can't\s+locate/ ) {
-            eval "use Set::IntSpan::Fast::PP ()";
-            die $@ if $@;
-            @ISA = qw( Set::IntSpan::Fast::PP );
-        }
-        else {
-            die $@;
-        }
+  our $VERSION = '1.15';
+  our @ISA;
+  eval "use Set::IntSpan::Fast::XS ()";
+  if ( $@ ) {
+    if ( $@ =~ /^Can't\s+locate/ ) {
+      eval "use Set::IntSpan::Fast::PP ()";
+      die $@ if $@;
+      @ISA = qw( Set::IntSpan::Fast::PP );
     }
     else {
-        @ISA = qw( Set::IntSpan::Fast::XS );
+      die $@;
     }
+  }
+  else {
+    @ISA = qw( Set::IntSpan::Fast::XS );
+  }
 }
 
 1;
@@ -223,6 +223,10 @@ be specified.
 
 Merge the members of the supplied sets into this set. Any number of sets
 may be supplied as arguments.
+
+=head2 C<empty>
+
+Empty a set.
 
 =head2 Operators
 
